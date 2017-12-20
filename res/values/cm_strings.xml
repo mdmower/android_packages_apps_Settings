@@ -25,6 +25,7 @@
     <string name="show_dev_on_cm">You have enabled development settings!</string>
     <!-- [CHAR LIMIT=NONE] Device Info screen. Okay we get it, stop pressing, you already have it on -->
     <string name="show_dev_already_cm">No need, you have already enabled development settings.</string>
+    <string name="show_security_patch_asterisk">This device runs a deprecated kernel version for which AOSP no longer announces vulnerabilities or releases patches.</string>
 
     <!-- Launch Dev Tools -->
     <string name="development_tools_title">Development tools</string>

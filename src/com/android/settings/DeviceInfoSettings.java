@@ -49,6 +49,8 @@ import com.android.internal.os.IRegionalizationService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.android.settingslib.RestrictedLockUtils.EnforcedAdmin;
 
@@ -98,6 +100,9 @@ public class DeviceInfoSettings extends SettingsPreferenceFragment implements In
     private boolean mDebuggingFeaturesDisallowedBySystem;
     private IRegionalizationService mRegionalizationService = null;
 
+    private boolean mSecurityPatchAsterisk = false;
+    Toast mSecurityPatchToast;
+
     @Override
     protected int getMetricsCategory() {
         return MetricsEvent.DEVICEINFO;
@@ -118,8 +123,17 @@ public class DeviceInfoSettings extends SettingsPreferenceFragment implements In
         setStringSummary(KEY_FIRMWARE_VERSION, Build.VERSION.RELEASE);
         findPreference(KEY_FIRMWARE_VERSION).setEnabled(true);
 
-        final String patch = DeviceInfoUtils.getSecurityPatch();
+        String patch = DeviceInfoUtils.getSecurityPatch();
         if (!TextUtils.isEmpty(patch)) {
+            String kernelVersion = DeviceInfoUtils.getFormattedKernelVersion();
+            if (kernelVersion != "Unavailable") {
+                final String DEPRECATED_VERSION_REGEX = "^2\\.|^3\\.[0-9]\\.";
+                Matcher matcher = Pattern.compile(DEPRECATED_VERSION_REGEX).matcher(kernelVersion);
+                if (matcher.find()) {
+                    patch += "*";
+                    mSecurityPatchAsterisk = true;
+                }
+            }
             setStringSummary(KEY_SECURITY_PATCH, patch);
         } else {
             getPreferenceScreen().removePreference(findPreference(KEY_SECURITY_PATCH));
@@ -235,6 +249,7 @@ public class DeviceInfoSettings extends SettingsPreferenceFragment implements In
                 Context.MODE_PRIVATE).getBoolean(DevelopmentSettings.PREF_SHOW,
                         android.os.Build.TYPE.equals("eng")) ? -1 : TAPS_TO_BE_A_DEVELOPER;
         mDevHitToast = null;
+        mSecurityPatchToast = null;
         mFunDisallowedAdmin = RestrictedLockUtils.checkIfRestrictionEnforced(
                 getActivity(), UserManager.DISALLOW_FUN, UserHandle.myUserId());
         mFunDisallowedBySystem = RestrictedLockUtils.hasBaseUserRestriction(
@@ -325,6 +340,9 @@ public class DeviceInfoSettings extends SettingsPreferenceFragment implements In
                 mDevHitToast.show();
             }
         } else if (preference.getKey().equals(KEY_SECURITY_PATCH)) {
+            if (mSecurityPatchAsterisk) {
+                showSecurityPatchToast();
+            }
             if (getPackageManager().queryIntentActivities(preference.getIntent(), 0).isEmpty()) {
                 // Don't send out the intent to stop crash
                 Log.w(LOG_TAG, "Stop click action on " + KEY_SECURITY_PATCH + ": "
@@ -464,6 +482,16 @@ public class DeviceInfoSettings extends SettingsPreferenceFragment implements In
         } catch (RuntimeException e) {
             // No recovery
         }
+    }
+
+    private void showSecurityPatchToast() {
+        if (mSecurityPatchToast != null) {
+            mSecurityPatchToast.cancel();
+        }
+        mSecurityPatchToast = Toast.makeText(getActivity(),
+                R.string.show_security_patch_asterisk,
+                Toast.LENGTH_LONG);
+        mSecurityPatchToast.show();
     }
 
     private void sendFeedback() {
